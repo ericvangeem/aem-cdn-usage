@@ -3,6 +3,7 @@ import json
 from collections import Counter
 import re
 import os
+import sys
 
 # Read the log file
 def read_log_file(file_path):
@@ -84,7 +85,16 @@ def analyze_logs(logs, input_filename):
     country_distribution = df['cli_country'].value_counts()
     
     # Content type distribution
-    content_type_distribution = df['res_ctype'].value_counts()
+    def simplify_content_type(ctype):
+        if ctype.startswith('text/html'):
+            return 'HTML'
+        elif ctype.startswith('application/json'):
+            return 'JSON'
+        else:
+            return 'Other'
+
+    df['simplified_ctype'] = df['res_ctype'].apply(simplify_content_type)
+    content_type_distribution = df['simplified_ctype'].value_counts()
     
     # Generate CSV of requested URLs and their counts
     url_counts = df['url'].value_counts().reset_index()
@@ -108,7 +118,11 @@ def analyze_logs(logs, input_filename):
 
 # Main execution
 if __name__ == "__main__":
-    input_log_file = 'publish_cdn_2024-10-17.log'
+    if len(sys.argv) != 2:
+        print("Usage: python analyze_logs.py <input_log_file>")
+        sys.exit(1)
+
+    input_log_file = sys.argv[1]
     logs = read_log_file(input_log_file)
     results, csv_filename = analyze_logs(logs, input_log_file)
     
