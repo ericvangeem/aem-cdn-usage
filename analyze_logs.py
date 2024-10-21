@@ -2,6 +2,7 @@ import pandas as pd
 import json
 from collections import Counter
 import re
+import os
 
 # Read the log file
 def read_log_file(file_path):
@@ -11,7 +12,7 @@ def read_log_file(file_path):
 # Filter function
 def should_include(entry):
     # Include only application/json or text/html
-    if entry['res_ctype'] not in ['application/json', 'text/html']:
+    if not (entry['res_ctype'].startswith('application/json') or entry['res_ctype'].startswith('text/html')):
         return False
     
     # Exclude based on HTTP status code
@@ -52,7 +53,7 @@ def should_include(entry):
     return True
 
 # Analyze the log data
-def analyze_logs(logs):
+def analyze_logs(logs, input_filename):
     # Filter logs
     filtered_logs = [log for log in logs if should_include(log)]
     
@@ -85,6 +86,14 @@ def analyze_logs(logs):
     # Content type distribution
     content_type_distribution = df['res_ctype'].value_counts()
     
+    # Generate CSV of requested URLs and their counts
+    url_counts = df['url'].value_counts().reset_index()
+    url_counts.columns = ['URL', 'Count']
+    
+    # Create CSV filename based on input log file
+    csv_filename = f'requested_urls_{os.path.splitext(input_filename)[0]}.csv'
+    url_counts.to_csv(csv_filename, index=False)
+    
     return {
         'total_requests': len(df),
         'requests_per_hour': requests_per_hour,
@@ -95,14 +104,17 @@ def analyze_logs(logs):
         'cache_hit_ratio': cache_hit_ratio,
         'country_distribution': country_distribution,
         'content_type_distribution': content_type_distribution
-    }
+    }, csv_filename
 
 # Main execution
 if __name__ == "__main__":
-    logs = read_log_file('publish_cdn_2024-10-17.log')
-    results = analyze_logs(logs)
+    input_log_file = 'publish_cdn_2024-10-17.log'
+    logs = read_log_file(input_log_file)
+    results, csv_filename = analyze_logs(logs, input_log_file)
     
     # Print results
     for key, value in results.items():
         print(f"\n{key.upper()}:")
         print(value)
+    
+    print(f"\nCSV file '{csv_filename}' has been generated with URL counts.")
