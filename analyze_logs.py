@@ -67,7 +67,7 @@ def analyze_logs(logs, input_filename):
     requests_per_hour = df.groupby(df['timestamp'].dt.hour).size()
     
     # Top 100 IP addresses
-    top_ips = df['cli_ip'].value_counts().head(100)
+    top_ips = df['cli_ip'].value_counts().head(50)
     
     # Top 100 URLs
     top_urls = df['url'].value_counts().head(100)
@@ -96,6 +96,15 @@ def analyze_logs(logs, input_filename):
     df['simplified_ctype'] = df['res_ctype'].apply(simplify_content_type)
     content_type_distribution = df['simplified_ctype'].value_counts()
     
+    # Adjust JSON count and create a new distribution
+    adjusted_content_type_distribution = content_type_distribution.astype(float)
+    if 'JSON' in adjusted_content_type_distribution:
+        json_count = adjusted_content_type_distribution['JSON']
+        adjusted_content_type_distribution['JSON'] = json_count / 5
+    
+    # Top 100 User Agents
+    top_user_agents = df['req_ua'].value_counts().head(50)
+
     # Generate CSV of requested URLs and their counts
     url_counts = df['url'].value_counts().reset_index()
     url_counts.columns = ['URL', 'Count']
@@ -109,11 +118,13 @@ def analyze_logs(logs, input_filename):
         'requests_per_hour': requests_per_hour,
         'top_ips': top_ips,
         'top_urls': top_urls,
+        'top_user_agents': top_user_agents,
         'status_distribution': status_distribution,
         'avg_ttfb': avg_ttfb,
         'cache_hit_ratio': cache_hit_ratio,
         'country_distribution': country_distribution,
-        'content_type_distribution': content_type_distribution
+        'content_type_distribution': content_type_distribution,
+        'adjusted_content_type_distribution': adjusted_content_type_distribution
     }, csv_filename
 
 # Main execution
@@ -127,8 +138,9 @@ if __name__ == "__main__":
     results, csv_filename = analyze_logs(logs, input_log_file)
     
     # Print results
-    for key, value in results.items():
-        print(f"\n{key.upper()}:")
-        print(value)
+    with pd.option_context('display.max_rows', None, 'display.max_columns', None, 'display.width', None, 'display.max_seq_items', 50):
+        for key, value in results.items():
+            print(f"\n{key.upper()}:")
+            print(value)            
     
     print(f"\nCSV file '{csv_filename}' has been generated with URL counts.")
