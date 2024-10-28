@@ -66,7 +66,7 @@ def analyze_logs(logs, input_filename):
     # Requests per hour
     requests_per_hour = df.groupby(df['timestamp'].dt.hour).size()
     
-    # Top 100 IP addresses
+    # Top 50 IP addresses
     top_ips = df['cli_ip'].value_counts().head(50)
     
     # Top 100 URLs
@@ -102,15 +102,32 @@ def analyze_logs(logs, input_filename):
         json_count = adjusted_content_type_distribution['JSON']
         adjusted_content_type_distribution['JSON'] = json_count / 5
     
-    # Top 100 User Agents
+    # Top 50 User Agents
     top_user_agents = df['req_ua'].value_counts().head(50)
 
-    # Generate CSV of requested URLs and their counts
-    url_counts = df['url'].value_counts().reset_index()
-    url_counts.columns = ['URL', 'Count']
-    
+    # Generate CSV of requested URLs, their counts, and top 5 user agents
+    url_counts = df.groupby('url').agg({
+        'url': 'count',
+        'req_ua': lambda x: x.value_counts().nlargest(5).to_dict()
+    })
+    url_counts.columns = ['Count', 'UserAgents']
+    url_counts = url_counts.reset_index()
+
+    # Expand the UserAgents dictionary into separate columns
+    for i in range(1, 6):
+        url_counts[f'UserAgent_{i}'] = url_counts['UserAgents'].apply(
+            lambda x: list(x.keys())[i-1] if len(x) >= i else '')
+        url_counts[f'UACount_{i}'] = url_counts['UserAgents'].apply(
+            lambda x: list(x.values())[i-1] if len(x) >= i else 0)
+
+    # Drop the temporary UserAgents column
+    url_counts = url_counts.drop('UserAgents', axis=1)
+
+    # Sort the DataFrame by Count in descending order
+    url_counts = url_counts.sort_values('Count', ascending=False)
+
     # Create CSV filename based on input log file
-    csv_filename = f'requested_urls_{os.path.splitext(input_filename)[0]}.csv'
+    csv_filename = f'requested_urls_{os.path.splitext(os.path.basename(input_filename))[0]}.csv'
     url_counts.to_csv(csv_filename, index=False)
     
     return {
