@@ -42,7 +42,7 @@ def should_include(entry):
         r'BLEX', r'BuiltWith', r'Bytespider', r'CrawlerKengo', r'Facebook', 
         r'Google', r'lmspider', r'LucidWorks', r'MJ12bot', r'Pinterest', 
         r'Semrush', r'SiteImprove', r'StashBot', r'StatusCake', r'Yandex',
-        r'Claudebot'
+        r'Claudebot', r'Baiduspider', r'bot', r'spider', r'amazon-QBusiness'
     ]
     if any(re.search(pattern, entry['req_ua'], re.IGNORECASE) for pattern in bot_patterns):
         return False
@@ -50,6 +50,15 @@ def should_include(entry):
     # Exclude manifest.json and favicon.ico
     if entry['url'] in ['/manifest.json', '/favicon.ico']:
         return False
+    
+    # Exclude events.html URLs
+    if 'events.html' in entry['url']:
+        return False
+    
+    # Exclude specific JSON content paths
+    if entry['res_ctype'].startswith('application/json'):
+        if entry['url'].startswith('/content/cq:tags') or entry['url'].startswith('/content/bc-web'):
+            return False
     
     return True
 
