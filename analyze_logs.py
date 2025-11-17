@@ -69,8 +69,8 @@ def analyze_logs(logs, input_filename):
     # Top 50 IP addresses
     top_ips = df['cli_ip'].value_counts().head(50)
     
-    # Top 100 URLs
-    top_urls = df['url'].value_counts().head(100)
+    # Top 100 URLs (grouped by host and url)
+    top_urls = df.groupby(['host', 'url']).size().nlargest(100)
     
     # HTTP status code distribution
     status_distribution = df['status'].value_counts()
@@ -105,8 +105,8 @@ def analyze_logs(logs, input_filename):
     # Top 50 User Agents
     top_user_agents = df['req_ua'].value_counts().head(50)
 
-    # Generate CSV of requested URLs, their counts, and top 5 user agents
-    url_counts = df.groupby('url').agg({
+    # Generate CSV of requested URLs (by host and url), their counts, and top 5 user agents
+    url_counts = df.groupby(['host', 'url']).agg({
         'url': 'count',
         'req_ua': lambda x: x.value_counts().nlargest(5).to_dict()
     })
